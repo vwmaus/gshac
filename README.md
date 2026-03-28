@@ -1,22 +1,29 @@
 # GSHAC
 
+[![Tests](https://github.com/vwmaus/gshac/actions/workflows/tests.yml/badge.svg)](https://github.com/vwmaus/gshac/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 **Geographically Sparse Hierarchical Agglomerative Clustering**
 
-Exact hierarchical clustering for spatial data, using a sparse geographic distance graph instead of the O(n^2) dense distance matrix. For any cut height h <= h_max, GSHAC produces results **identical** to standard HAC (fastcluster/scipy) while requiring only O(n*k) time and memory, where k is the mean neighbourhood size within h_max.
+Exact hierarchical clustering for spatial data, using a sparse geographic distance graph instead of the O(n^2) dense distance matrix. For any cut height h <= h_max, GSHAC produces results **identical** to standard HAC (fastcluster/scipy) while requiring only O(n*k) time and memory, where k is the mean neighborhood size within h_max.
 
-An default C extension provides optimised union-find linkage, haversine distances, and batch dendrogram cutting. The library has a fallback pure Python implementation, but the C is recommended for large datasets.
+An default C extension provides optimized union-find linkage, haversine distances, and batch dendrogram cutting. The library has a fallback pure Python implementation, but the C is recommended for large datasets.
 
 ## Installation
 
 Requires Python >= 3.10 and a C compiler (for the optional extension).
 
 ```bash
-# Clone and install
 git clone https://github.com/vwmaus/gshac.git
 cd gshac
-pip install -e .
 
-# Build the C extension (optional but recommended for performance)
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install package + build C extension
+pip install -e .
 python3 setup.py build_ext --inplace
 ```
 
@@ -62,40 +69,47 @@ result = sparse_hclust(graph, h_cuts=[5_000, 10_000], method="single")
 ### Dendrograms
 
 ```python
+import matplotlib.pyplot as plt
 from gshac import sparse_hclust, spatial_dist_graph, plot_dendrogram
 
 graph = spatial_dist_graph(coords, h_max=10_000)
 result = sparse_hclust(graph, h_cuts=[5_000], return_linkage=True)
 plot_dendrogram(result, color_threshold=5_000)
+plt.savefig("dendrogram.pdf", bbox_inches="tight")
 ```
 
 Or from a fitted estimator:
 
 ```python
 plot_dendrogram(model)
+plt.savefig("dendrogram.pdf", bbox_inches="tight")
 ```
 
 Per-component dendrograms (avoids the infinity stitching):
 
 ```python
 from gshac import plot_component_dendrograms
-plot_component_dendrograms(result, top_k=4)
+fig, axes = plot_component_dendrograms(result, top_k=4)
+fig.savefig("components.pdf", bbox_inches="tight")
 ```
 
 ### Linkage matrix access
 
 The `return_linkage=True` flag returns per-component scipy linkage matrices.
 Use `stitch_linkage()` to combine them into a single `(n-1, 4)` matrix
-compatible with `scipy.cluster.hierarchy.dendrogram` and `fcluster`:
+compatible with `scipy.cluster.hierarchy.fcluster`:
 
 ```python
 from gshac import stitch_linkage
-from scipy.cluster.hierarchy import dendrogram, fcluster
+from scipy.cluster.hierarchy import fcluster
 
 Z = stitch_linkage(result)
 labels = fcluster(Z, t=5_000, criterion="distance")
-dendrogram(Z)
 ```
+
+Note: the stitched Z contains `inf` distances for inter-component merges,
+so pass it through `plot_dendrogram()` (which handles this) rather than
+calling `scipy.cluster.hierarchy.dendrogram(Z)` directly.
 
 The sklearn estimator also exposes `children_`, `distances_`, and
 `linkage_matrix_` after fitting.
@@ -103,6 +117,7 @@ The sklearn estimator also exposes `children_`, `distances_`, and
 ## Running tests
 
 ```bash
+source .venv/bin/activate
 pip install -e ".[dev]"
 python3 setup.py build_ext --inplace
 pytest tests/ -v
