@@ -1,7 +1,7 @@
 /*
- * _sghac.c — C extension module for SGHAC
+ * _gshac.c — C extension module for GSHAC
  *
- * Provides optimised C implementations of performance-critical SGHAC
+ * Provides optimised C implementations of performance-critical GSHAC
  * functions, callable from Python via the NumPy C API.
  *
  * Functions:
@@ -48,7 +48,7 @@ static inline npy_intp uf_find(npy_intp *parent, npy_intp x) {
 /* ------------------------------------------------------------------ */
 
 static PyObject *
-sghac_linkage_from_mst(PyObject *self, PyObject *args)
+gshac_linkage_from_mst(PyObject *self, PyObject *args)
 {
     PyArrayObject *py_rows, *py_cols, *py_weights;
     int size;
@@ -172,7 +172,7 @@ sghac_linkage_from_mst(PyObject *self, PyObject *args)
 /* ------------------------------------------------------------------ */
 
 static PyObject *
-sghac_haversine_edges(PyObject *self, PyObject *args)
+gshac_haversine_edges(PyObject *self, PyObject *args)
 {
     PyArrayObject *py_lon1, *py_lat1, *py_lon2, *py_lat2;
     double R;
@@ -256,7 +256,7 @@ sghac_haversine_edges(PyObject *self, PyObject *args)
 /* ------------------------------------------------------------------ */
 
 static PyObject *
-sghac_fcluster_batch(PyObject *self, PyObject *args)
+gshac_fcluster_batch(PyObject *self, PyObject *args)
 {
     PyArrayObject *py_Z, *py_hcuts;
     int size;
@@ -375,8 +375,8 @@ sghac_fcluster_batch(PyObject *self, PyObject *args)
 /* Module definition                                                   */
 /* ------------------------------------------------------------------ */
 
-static PyMethodDef sghac_methods[] = {
-    {"linkage_from_mst", sghac_linkage_from_mst, METH_VARARGS,
+static PyMethodDef gshac_methods[] = {
+    {"linkage_from_mst", gshac_linkage_from_mst, METH_VARARGS,
      "Build scipy linkage matrix from sorted MST edges via union-find.\n\n"
      "Parameters\n"
      "----------\n"
@@ -391,7 +391,7 @@ static PyMethodDef sghac_methods[] = {
      "Z : float64 array (n-1, 4)\n"
      "    Scipy-format linkage matrix.\n"},
 
-    {"fcluster_batch", sghac_fcluster_batch, METH_VARARGS,
+    {"fcluster_batch", gshac_fcluster_batch, METH_VARARGS,
      "Cut linkage matrix at multiple thresholds in one call.\n\n"
      "Parameters\n"
      "----------\n"
@@ -406,7 +406,7 @@ static PyMethodDef sghac_methods[] = {
      "labels : int64 array (k, n)\n"
      "    Cluster labels for each cut height (1-indexed).\n"},
 
-    {"haversine_edges", sghac_haversine_edges, METH_VARARGS,
+    {"haversine_edges", gshac_haversine_edges, METH_VARARGS,
      "Compute haversine distances for pairs of (lon, lat) in radians.\n\n"
      "Parameters\n"
      "----------\n"
@@ -422,18 +422,18 @@ static PyMethodDef sghac_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef sghac_module = {
+static struct PyModuleDef gshac_module = {
     PyModuleDef_HEAD_INIT,
-    "_sghac",
-    "C extension for SGHAC (Sparse Geographic HAC).\n"
+    "_gshac",
+    "C extension for GSHAC (Sparse Geographic HAC).\n"
     "Provides optimised union-find linkage and haversine distance computation.",
     -1,
-    sghac_methods
+    gshac_methods
 };
 
 PyMODINIT_FUNC
-PyInit__sghac(void)
+PyInit__gshac(void)
 {
     import_array();  /* Initialise NumPy C API */
-    return PyModule_Create(&sghac_module);
+    return PyModule_Create(&gshac_module);
 }
