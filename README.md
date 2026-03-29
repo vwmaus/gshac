@@ -6,7 +6,7 @@
 
 **Geographically Sparse Hierarchical Agglomerative Clustering**
 
-Exact hierarchical clustering for spatial data, using a sparse geographic distance graph instead of the O(n^2) dense distance matrix. For any cut height h <= h_max, GSHAC produces results **identical** to standard HAC (fastcluster/scipy) while requiring only O(n*k) time and memory, where k is the mean neighborhood size within h_max.
+Exact hierarchical clustering for spatial data, using a sparse geographic distance graph instead of the O(n²) dense distance matrix. For any cut height h <= h_max, GSHAC produces results **identical** to standard HAC (fastcluster/scipy) while requiring only O(n.k) time and memory, where k is the mean neighborhood size within h_max.
 
 An default C extension provides optimized union-find linkage, haversine distances, and batch dendrogram cutting. The library has a fallback pure Python implementation, but the C is recommended for large datasets.
 
