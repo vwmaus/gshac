@@ -44,13 +44,25 @@ except ImportError:
     _GSHAC_C = False
 
 
-def _build_Z_from_mst(sub_csr, size):
+def _build_Z_from_mst(sub_csr: csr_matrix, size: int) -> np.ndarray:
     """
     Build a scipy linkage matrix Z for single linkage using the MST of a
     sparse distance sub-matrix.  O(m log m) time, O(n + m) memory — avoids
     the O(n²) dense sub-matrix entirely.
 
     Uses optimised C union-find when the _gshac extension is available.
+
+    Parameters
+    ----------
+    sub_csr : csr_matrix
+        Sparse symmetric distance sub-matrix for one connected component.
+    size : int
+        Number of points in the component (``sub_csr.shape[0]``).
+
+    Returns
+    -------
+    Z : ndarray of shape ``(size - 1, 4)``
+        Scipy-format linkage matrix for the component.
     """
     mst     = _mst(sub_csr)           # upper-triangular CSR of MST edges
     rows, cols = mst.nonzero()
@@ -142,6 +154,12 @@ def sparse_hclust(
         labels     : dict mapping each h in h_cuts to an ndarray of int
                      cluster labels (length n, globally unique across components)
         linkage_trees : list of (Z, indices) tuples (only when return_linkage=True)
+
+    Raises
+    ------
+    ValueError
+        If ``graph`` is missing required keys, or ``ids`` length does not
+        match the number of points in the graph.
     """
     mat        = graph["matrix"]
     components = graph["components"]
@@ -259,6 +277,13 @@ def stitch_linkage(result: dict) -> np.ndarray:
     -------
     Z : ndarray of shape ``(n - 1, 4)``
         Scipy-format linkage matrix covering all *n* points.
+
+    Raises
+    ------
+    KeyError
+        If ``result`` does not contain ``'linkage_trees'``, ``'components'``,
+        or ``'ids'`` — i.e. ``sparse_hclust`` was called without
+        ``return_linkage=True``.
     """
     linkage_trees = result["linkage_trees"]
     n = len(result["ids"])
@@ -349,7 +374,18 @@ def dense_hclust(
 
     Returns
     -------
-    Same structure as sparse_hclust().
+    dict with keys:
+        ids        : list of feature IDs (length n)
+        components : ndarray of int, shape (n,), all zeros (one component)
+        labels     : dict mapping each h in h_cuts to an ndarray of int
+                     cluster labels (length n)
+        linkage_trees : list with a single ``(Z, indices)`` tuple
+                        (only when ``return_linkage=True``)
+
+    Raises
+    ------
+    ValueError
+        If ``metric`` is not ``'euclidean'`` or ``'haversine'``.
     """
     n = len(coords)
     if ids is None:
@@ -396,7 +432,7 @@ def dense_hclust(
 # =============================================================================
 
 if _SKLEARN:
-    class SpatialAgglomerativeClustering(BaseEstimator, ClusterMixin):
+    class SparseAgglomerativeClustering(BaseEstimator, ClusterMixin):
         """
         Hierarchical clustering of spatial data via a sparse geographic distance
         graph.  Produces identical results to AgglomerativeClustering for any cut
@@ -471,7 +507,7 @@ if _SKLEARN:
             self.linkage = linkage
             self.metric = metric
 
-        def fit(self, X, y=None):
+        def fit(self, X: np.ndarray, y: None = None) -> "SparseAgglomerativeClustering":
             """
             Fit the clustering model.
 
@@ -481,10 +517,17 @@ if _SKLEARN:
                 Coordinates.  (x, y) in metres for metric='euclidean';
                 (lon, lat) in degrees for metric='haversine'.
             y : ignored
+                Not used; present for sklearn API compatibility.
 
             Returns
             -------
-            self
+            self : SparseAgglomerativeClustering
+                Fitted estimator.
+
+            Raises
+            ------
+            ValueError
+                If ``X`` does not have exactly 2 columns.
             """
             from gshac.spatial_dist_graph import spatial_dist_graph
 
@@ -512,6 +555,21 @@ if _SKLEARN:
 
             return self
 
-        def fit_predict(self, X, y=None):
-            """Fit and return cluster labels."""
+        def fit_predict(self, X: np.ndarray, y: None = None) -> np.ndarray:
+            """
+            Fit the model and return cluster labels.
+
+            Parameters
+            ----------
+            X : array-like of shape (n_samples, 2)
+                Coordinates.  (x, y) in metres for metric='euclidean';
+                (lon, lat) in degrees for metric='haversine'.
+            y : ignored
+                Not used; present for sklearn API compatibility.
+
+            Returns
+            -------
+            labels : ndarray of shape (n_samples,)
+                Cluster label for each sample.
+            """
             return self.fit(X, y).labels_

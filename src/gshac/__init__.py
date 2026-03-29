@@ -4,7 +4,7 @@ from gshac.spatial_dist_graph import spatial_dist_graph, geographic_connectivity
 from gshac.sparse_hclust import (
     sparse_hclust,
     stitch_linkage,
-    SpatialAgglomerativeClustering,
+    SparseAgglomerativeClustering,
 )
 from gshac.dendro import plot_dendrogram, plot_component_dendrograms
 
@@ -13,7 +13,7 @@ __all__ = [
     "geographic_connectivity",
     "sparse_hclust",
     "stitch_linkage",
-    "SpatialAgglomerativeClustering",
+    "SparseAgglomerativeClustering",
     "plot_dendrogram",
     "plot_component_dendrograms",
 ]

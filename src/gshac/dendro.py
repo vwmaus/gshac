@@ -11,27 +11,27 @@ from __future__ import annotations
 
 import numpy as np
 from scipy.cluster.hierarchy import dendrogram as _scipy_dendrogram
-from typing import Optional, Sequence
+from typing import Any, Optional, Union
 
 
 def plot_dendrogram(
-    model_or_result,
+    model_or_result: Union[dict, Any],
     *,
-    ax=None,
+    ax: Optional[Any] = None,
     truncate_mode: Optional[str] = "lastp",
     p: int = 30,
     color_threshold: Optional[float] = None,
     no_labels: bool = True,
     show_inf: bool = False,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> dict:
     """
     Plot a dendrogram from a fitted estimator or ``sparse_hclust`` result.
 
     Parameters
     ----------
-    model_or_result : SpatialAgglomerativeClustering or dict
-        Either a fitted :class:`SpatialAgglomerativeClustering` instance
+    model_or_result : SparseAgglomerativeClustering or dict
+        Either a fitted :class:`SparseAgglomerativeClustering` instance
         (uses ``model.linkage_matrix_``) or a dict returned by
         ``sparse_hclust(..., return_linkage=True)`` (will call
         :func:`stitch_linkage` automatically).
@@ -62,6 +62,12 @@ def plot_dendrogram(
     R : dict
         The dendrogram data dict returned by scipy (contains ``'icoord'``,
         ``'dcoord'``, ``'ivl'``, ``'leaves'``, ``'color_list'``).
+
+    Raises
+    ------
+    ValueError
+        If ``model_or_result`` is a dict without a ``'linkage_trees'`` key
+        (i.e. ``sparse_hclust`` was called without ``return_linkage=True``).
     """
     import matplotlib.pyplot as plt
     from gshac.sparse_hclust import stitch_linkage
@@ -120,10 +126,10 @@ def plot_component_dendrograms(
     result: dict,
     *,
     top_k: int = 4,
-    figsize: Optional[tuple] = None,
+    figsize: Optional[tuple[int, int]] = None,
     color_threshold: Optional[float] = None,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> tuple[Any, list[Any]]:
     """
     Plot individual dendrograms for the largest connected components.
 
@@ -142,8 +148,16 @@ def plot_component_dendrograms(
 
     Returns
     -------
-    fig : matplotlib Figure
-    axes : list of Axes
+    fig : matplotlib.figure.Figure
+        The figure containing the subplots.
+    axes : list of matplotlib.axes.Axes
+        One Axes per plotted component, in descending size order.
+
+    Raises
+    ------
+    ValueError
+        If ``result`` contains no non-singleton components
+        (``result['linkage_trees']`` is empty).
     """
     import matplotlib.pyplot as plt
 

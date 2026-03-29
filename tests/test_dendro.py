@@ -7,7 +7,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from gshac.spatial_dist_graph import spatial_dist_graph
-from gshac.sparse_hclust import sparse_hclust, SpatialAgglomerativeClustering
+from gshac.sparse_hclust import sparse_hclust, SparseAgglomerativeClustering
 from gshac.dendro import plot_dendrogram, plot_component_dendrograms
 
 
@@ -19,7 +19,7 @@ def result_with_linkage(small_clustered_coords):
 
 @pytest.fixture
 def fitted_model(small_clustered_coords):
-    model = SpatialAgglomerativeClustering(h_max=10_000, distance_threshold=5_000)
+    model = SparseAgglomerativeClustering(h_max=10_000, distance_threshold=5_000)
     model.fit(small_clustered_coords)
     return model
 

@@ -41,12 +41,12 @@ pip install -e ".[dev]"    # + pytest + all optional deps
 ### scikit-learn API
 
 ```python
-from gshac import SpatialAgglomerativeClustering
+from gshac import SparseAgglomerativeClustering
 import numpy as np
 
 coords = np.random.default_rng(0).uniform(0, 500_000, size=(5_000, 2))
 
-model = SpatialAgglomerativeClustering(
+model = SparseAgglomerativeClustering(
     h_max=10_000,              # sparse graph radius (metres)
     distance_threshold=5_000,  # cut height (metres)
     linkage="single",
@@ -119,7 +119,6 @@ The sklearn estimator also exposes `children_`, `distances_`, and
 ```bash
 source .venv/bin/activate
 pip install -e ".[dev]"
-python3 setup.py build_ext --inplace
 pytest tests/ -v
 ```
 
@@ -130,11 +129,23 @@ pytest tests/ -v
 | `spatial_dist_graph(coords, h_max, metric)` | Build sparse distance graph (CSR matrix) |
 | `sparse_hclust(graph, h_cuts, method, return_linkage)` | Component-wise HAC on the sparse graph |
 | `stitch_linkage(result)` | Combine per-component Z matrices into one |
-| `SpatialAgglomerativeClustering` | sklearn-compatible estimator |
+| `SparseAgglomerativeClustering` | sklearn-compatible estimator |
 | `geographic_connectivity(coords, h_max, metric)` | Binary connectivity matrix for sklearn |
 | `plot_dendrogram(model_or_result, ...)` | Plot dendrogram from estimator or result |
 | `plot_component_dendrograms(result, top_k)` | Plot dendrograms for largest components |
 
+## Acknowledgements
+
+GSHAC builds on and is designed to interoperate with the scientific Python ecosystem:
+
+- **[scipy](https://scipy.org/)** (BSD-3-Clause) — the linkage matrix format produced by GSHAC follows the `scipy.cluster.hierarchy` convention. The internal `fcluster_batch` C routine reimplements the logic of `scipy.cluster.hierarchy.fcluster(Z, t, criterion='distance')` to process multiple thresholds in a single pass; it is an independent implementation written for this project, not derived from scipy source code.
+- **[fastcluster](https://github.com/dmuellner/fastcluster)** (BSD-2-Clause) — used as an optional faster backend for per-component linkage computation.
+- **[scikit-learn](https://scikit-learn.org/)** (BSD-3-Clause) — the `SparseAgglomerativeClustering` estimator follows the sklearn `BaseEstimator` / `ClusterMixin` API conventions.
+
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE).
+
+## Funding
+
+Funded by the European Union. This work was supported by the European Research Council (ERC) project MINE-THE-GAP [https://minethegap.eu](https://minethegap.eu) (grant agreement no. 101170578 [10.3030/101170578](https://doi.org/10.3030/101170578). Views and opinions expressed are however those of the author only and do not necessarily reflect those of the European Union or the European Research Council Executive Agency. Neither the European Union nor the granting authority can be held responsible for them.

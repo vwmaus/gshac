@@ -72,6 +72,12 @@ def spatial_dist_graph(
         n_components : int, number of connected components.
         n_edges      : int, number of edges computed (upper triangle).
         density      : float, fill ratio n_edges / (n*(n-1)/2).
+
+    Raises
+    ------
+    ValueError
+        If ``coords`` has fewer than 2 points, or ``metric`` is not
+        ``'euclidean'`` or ``'haversine'``.
     """
     n = len(coords)
     if n < 2:
@@ -196,7 +202,7 @@ def geographic_connectivity(
 
     Note: AgglomerativeClustering will still compute pairwise distances
     internally; the connectivity matrix constrains *which* pairs may merge.
-    For large n, use SpatialAgglomerativeClustering instead, which stores
+    For large n, use SparseAgglomerativeClustering instead, which stores
     pre-computed distances in the sparse graph and avoids redundant computation.
 
     Parameters

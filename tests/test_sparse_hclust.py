@@ -2,14 +2,16 @@
 
 import numpy as np
 import pytest
-from scipy.cluster.hierarchy import fcluster
+from scipy.cluster.hierarchy import fcluster, linkage
+from scipy.spatial.distance import pdist, squareform
+from sklearn.metrics import adjusted_rand_score
 
 from gshac.spatial_dist_graph import spatial_dist_graph
 from gshac.sparse_hclust import (
     sparse_hclust,
     dense_hclust,  # not part of public API; tested here as benchmark baseline
     stitch_linkage,
-    SpatialAgglomerativeClustering,
+    SparseAgglomerativeClustering,
 )
 
 
@@ -232,11 +234,11 @@ def test_dense_hclust_labels_shape():
 
 
 # ---------------------------------------------------------------------------
-# SpatialAgglomerativeClustering (sklearn API)
+# SparseAgglomerativeClustering (sklearn API)
 # ---------------------------------------------------------------------------
 
 def test_sklearn_api_fit(small_clustered_coords):
-    model = SpatialAgglomerativeClustering(h_max=5_000, distance_threshold=3_000)
+    model = SparseAgglomerativeClustering(h_max=5_000, distance_threshold=3_000)
     model.fit(small_clustered_coords)
     assert hasattr(model, "labels_")
     assert model.labels_.shape == (200,)
@@ -246,13 +248,13 @@ def test_sklearn_api_fit(small_clustered_coords):
 
 
 def test_sklearn_api_fit_predict(small_clustered_coords):
-    model = SpatialAgglomerativeClustering(h_max=5_000, distance_threshold=3_000)
+    model = SparseAgglomerativeClustering(h_max=5_000, distance_threshold=3_000)
     labels = model.fit_predict(small_clustered_coords)
     assert labels.shape == (200,)
 
 
 def test_sklearn_api_exposes_linkage(small_clustered_coords):
-    model = SpatialAgglomerativeClustering(h_max=5_000, distance_threshold=3_000)
+    model = SparseAgglomerativeClustering(h_max=5_000, distance_threshold=3_000)
     model.fit(small_clustered_coords)
     n = len(small_clustered_coords)
 
@@ -264,3 +266,99 @@ def test_sklearn_api_exposes_linkage(small_clustered_coords):
 
     assert hasattr(model, "distances_")
     assert model.distances_.shape == (n - 1,)
+
+
+# ---------------------------------------------------------------------------
+# Linkage method correctness: sparse_hclust vs scipy for each HAC method
+#
+# Strategy: use a small dataset where all points fall within h_max, so the
+# sparse graph is fully connected and sparse_hclust must produce results
+# identical to scipy.cluster.hierarchy.linkage + fcluster.
+# Partition equivalence is checked with adjusted_rand_score (ARI = 1.0),
+# which is invariant to label permutations — matching the guarantee that
+# "groups are identical, labels may differ".
+# ---------------------------------------------------------------------------
+
+# Small well-separated clusters so every cut height produces a non-trivial
+# partition (not all singletons, not one big cluster).
+_METHODS_COORDS = np.array([
+    [0, 0], [1, 0], [0, 1], [1, 1],      # cluster A
+    [10, 0], [11, 0], [10, 1], [11, 1],  # cluster B
+    [5, 8], [6, 8], [5, 9], [6, 9],      # cluster C
+], dtype=float)
+
+# h_max large enough to connect all points; h_cut chosen to recover 3 clusters
+_METHODS_H_MAX = 30.0
+_METHODS_H_CUT = 5.0
+
+HAC_METHODS = ["single", "complete", "average", "weighted", "ward"]
+
+
+@pytest.mark.parametrize("method", HAC_METHODS)
+def test_method_partition_matches_scipy(method):
+    """sparse_hclust with each linkage method produces the same partition as scipy."""
+    coords = _METHODS_COORDS
+    h_max = _METHODS_H_MAX
+    h_cut = _METHODS_H_CUT
+
+    graph = spatial_dist_graph(coords, h_max=h_max, metric="euclidean")
+    assert graph["n_components"] == 1, "all points must be in one component"
+
+    result = sparse_hclust(graph, h_cuts=[h_cut], method=method)
+    gshac_labels = result["labels"][float(h_cut)]
+
+    dists = pdist(coords)
+    Z = linkage(dists, method=method)
+    scipy_labels = fcluster(Z, t=h_cut, criterion="distance")
+
+    ari = adjusted_rand_score(scipy_labels, gshac_labels)
+    assert ari == 1.0, (
+        f"method={method!r}: partition differs from scipy (ARI={ari:.4f})\n"
+        f"  gshac : {gshac_labels}\n"
+        f"  scipy : {scipy_labels}"
+    )
+
+
+@pytest.mark.parametrize("method", HAC_METHODS)
+def test_method_cluster_count_matches_scipy(method):
+    """Cluster count from sparse_hclust matches scipy at multiple cut heights."""
+    rng = np.random.default_rng(42)
+    coords = rng.uniform(0, 20, size=(40, 2))
+    h_max = 100.0  # fully connected
+    h_cuts = [2.0, 5.0, 10.0]
+
+    graph = spatial_dist_graph(coords, h_max=h_max, metric="euclidean")
+    result = sparse_hclust(graph, h_cuts=h_cuts, method=method)
+
+    dists = pdist(coords)
+    Z = linkage(dists, method=method)
+
+    for h in h_cuts:
+        gshac_k = len(np.unique(result["labels"][float(h)]))
+        scipy_k = len(np.unique(fcluster(Z, t=h, criterion="distance")))
+        assert gshac_k == scipy_k, (
+            f"method={method!r}, h={h}: gshac={gshac_k} clusters, scipy={scipy_k}"
+        )
+
+
+@pytest.mark.parametrize("method", HAC_METHODS)
+def test_method_exact_partition_random(method):
+    """Verify identical partition (not just count) for a random dataset."""
+    rng = np.random.default_rng(7)
+    coords = rng.uniform(0, 50, size=(30, 2))
+    h_max = 200.0  # fully connected
+    h_cuts = [5.0, 15.0, 30.0]
+
+    graph = spatial_dist_graph(coords, h_max=h_max, metric="euclidean")
+    result = sparse_hclust(graph, h_cuts=h_cuts, method=method)
+
+    dists = pdist(coords)
+    Z = linkage(dists, method=method)
+
+    for h in h_cuts:
+        gshac_labels = result["labels"][float(h)]
+        scipy_labels = fcluster(Z, t=h, criterion="distance")
+        ari = adjusted_rand_score(scipy_labels, gshac_labels)
+        assert ari == 1.0, (
+            f"method={method!r}, h={h}: partition differs from scipy (ARI={ari:.4f})"
+        )
