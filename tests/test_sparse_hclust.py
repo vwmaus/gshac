@@ -71,10 +71,55 @@ def test_results_field_keys(small_clustered_coords):
 
 
 # ---------------------------------------------------------------------------
+# C extension vs Python fallback produce identical results
+# ---------------------------------------------------------------------------
+
+def test_c_and_python_linkage_agree(monkeypatch):
+    """C union-find linkage and Python fallback must produce the same Z matrix."""
+    import sys
+    import gshac.sparse_hclust
+
+    rng = np.random.default_rng(0)
+    coords = rng.uniform(0, 10_000, size=(40, 2))
+    graph = spatial_dist_graph(coords, h_max=20_000)
+
+    monkeypatch.setattr(sys.modules["gshac.sparse_hclust"], "_GSHAC_C", True)
+    result_c = sparse_hclust(graph, h_cuts=[3_000, 8_000], method="single")
+
+    monkeypatch.setattr(sys.modules["gshac.sparse_hclust"], "_GSHAC_C", False)
+    result_py = sparse_hclust(graph, h_cuts=[3_000, 8_000], method="single")
+
+    for h in [3_000.0, 8_000.0]:
+        ari = adjusted_rand_score(result_c["labels"][h], result_py["labels"][h])
+        assert ari == 1.0, f"C and Python paths disagree at h={h} (ARI={ari:.4f})"
+
+
+def test_c_and_python_fcluster_batch_agree(monkeypatch):
+    """C fcluster_batch and scipy fcluster fallback must produce the same labels."""
+    import sys
+    import gshac.sparse_hclust
+
+    rng = np.random.default_rng(5)
+    coords = rng.uniform(0, 10_000, size=(50, 2))
+    graph = spatial_dist_graph(coords, h_max=20_000)
+    h_cuts = [2_000, 5_000, 9_000]
+
+    monkeypatch.setattr(sys.modules["gshac.sparse_hclust"], "_GSHAC_C", True)
+    result_c = sparse_hclust(graph, h_cuts=h_cuts, method="complete")
+
+    monkeypatch.setattr(sys.modules["gshac.sparse_hclust"], "_GSHAC_C", False)
+    result_py = sparse_hclust(graph, h_cuts=h_cuts, method="complete")
+
+    for h in [float(x) for x in h_cuts]:
+        ari = adjusted_rand_score(result_c["labels"][h], result_py["labels"][h])
+        assert ari == 1.0, f"C and Python fcluster paths disagree at h={h} (ARI={ari:.4f})"
+
+
+# ---------------------------------------------------------------------------
 # Exactness: sparse vs dense produce the same cluster counts
 # ---------------------------------------------------------------------------
 
-def test_sparse_matches_dense():
+def test_sparse_matches_dense(backend):
     rng = np.random.default_rng(7)
     coords = rng.uniform(0, 50_000, size=(300, 2))
     h_max = 10_000
@@ -90,7 +135,7 @@ def test_sparse_matches_dense():
         assert n_sp == n_dn, f"Mismatch at h={h}: sparse={n_sp}, dense={n_dn}"
 
 
-def test_sparse_matches_dense_exact_labels():
+def test_sparse_matches_dense_exact_labels(backend):
     """Not just cluster counts — verify identical cluster memberships."""
     rng = np.random.default_rng(99)
     coords = rng.uniform(0, 30_000, size=(150, 2))
@@ -295,7 +340,7 @@ HAC_METHODS = ["single", "complete", "average", "weighted", "ward"]
 
 
 @pytest.mark.parametrize("method", HAC_METHODS)
-def test_method_partition_matches_scipy(method):
+def test_method_partition_matches_scipy(method, backend):
     """sparse_hclust with each linkage method produces the same partition as scipy."""
     coords = _METHODS_COORDS
     h_max = _METHODS_H_MAX
@@ -320,7 +365,7 @@ def test_method_partition_matches_scipy(method):
 
 
 @pytest.mark.parametrize("method", HAC_METHODS)
-def test_method_cluster_count_matches_scipy(method):
+def test_method_cluster_count_matches_scipy(method, backend):
     """Cluster count from sparse_hclust matches scipy at multiple cut heights."""
     rng = np.random.default_rng(42)
     coords = rng.uniform(0, 20, size=(40, 2))
@@ -342,7 +387,7 @@ def test_method_cluster_count_matches_scipy(method):
 
 
 @pytest.mark.parametrize("method", HAC_METHODS)
-def test_method_exact_partition_random(method):
+def test_method_exact_partition_random(method, backend):
     """Verify identical partition (not just count) for a random dataset."""
     rng = np.random.default_rng(7)
     coords = rng.uniform(0, 50, size=(30, 2))

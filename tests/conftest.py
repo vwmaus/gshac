@@ -27,3 +27,25 @@ def small_lonlat_coords(rng):
     lon = base_lon + rng.normal(0, 0.05, size=100)
     lat = base_lat + rng.normal(0, 0.05, size=100)
     return np.column_stack([lon, lat])
+
+
+@pytest.fixture(params=["c_extension", "python_fallback"])
+def backend(request, monkeypatch):
+    """Parametrized fixture that runs each test against both the native C
+    extension and the pure-Python fallback.  Patches both _GSHAC_C flags so
+    that the branching code in sparse_hclust and spatial_dist_graph is fully
+    exercised by the test suite.
+
+    Uses sys.modules to get the module objects directly, avoiding the name
+    collision between the sparse_hclust function and the sparse_hclust module
+    that arises from gshac/__init__.py importing the function into the gshac
+    namespace.
+    """
+    import sys
+    import gshac.sparse_hclust   # ensure loaded
+    import gshac.spatial_dist_graph
+
+    use_c = request.param == "c_extension"
+    monkeypatch.setattr(sys.modules["gshac.sparse_hclust"], "_GSHAC_C", use_c)
+    monkeypatch.setattr(sys.modules["gshac.spatial_dist_graph"], "_GSHAC_C", use_c)
+    return request.param

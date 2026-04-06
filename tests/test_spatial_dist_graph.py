@@ -37,13 +37,32 @@ def test_no_edges_all_singletons():
     assert graph["n_components"] == 3
 
 
-def test_haversine_metric(small_lonlat_coords):
+def test_haversine_metric(small_lonlat_coords, backend):
     graph = spatial_dist_graph(small_lonlat_coords, h_max=10_000, metric="haversine")
     assert issparse(graph["matrix"])
     assert graph["n_edges"] > 0
     # All stored distances should be positive and <= h_max
     assert np.all(graph["matrix"].data > 0)
     assert np.all(graph["matrix"].data <= 10_000)
+
+
+def test_haversine_c_and_python_agree(small_lonlat_coords, monkeypatch):
+    """C haversine and numpy haversine fallback must produce identical distances."""
+    import sys
+    import gshac.spatial_dist_graph
+
+    monkeypatch.setattr(sys.modules["gshac.spatial_dist_graph"], "_GSHAC_C", True)
+    graph_c = spatial_dist_graph(small_lonlat_coords, h_max=10_000, metric="haversine")
+
+    monkeypatch.setattr(sys.modules["gshac.spatial_dist_graph"], "_GSHAC_C", False)
+    graph_py = spatial_dist_graph(small_lonlat_coords, h_max=10_000, metric="haversine")
+
+    assert graph_c["n_edges"] == graph_py["n_edges"]
+    assert np.allclose(
+        np.sort(graph_c["matrix"].data),
+        np.sort(graph_py["matrix"].data),
+        rtol=1e-10,
+    ), "C and Python haversine produce different distances"
 
 
 def test_density_in_range(small_clustered_coords):
