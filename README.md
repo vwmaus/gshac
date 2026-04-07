@@ -1,9 +1,9 @@
 # GSHAC
 
-[![Tests](https://github.com/vwmaus/gshac/actions/workflows/tests.yml/badge.svg)](https://github.com/vwmaus/gshac/actions/workflows/tests.yml)
+[![Tests](https://github.com/mine-the-gap/gshac/actions/workflows/tests.yml/badge.svg)](https://github.com/mine-the-gap/gshac/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![codecov](https://codecov.io/gh/vwmaus/gshac/graph/badge.svg?token=9VQVWDFRQ2)](https://codecov.io/gh/vwmaus/gshac)
+[![codecov](https://codecov.io/gh/mine-the-gap/gshac/graph/badge.svg)](https://codecov.io/gh/mine-the-gap/gshac)
 
 **Geographically Sparse Hierarchical Agglomerative Clustering**
 
@@ -16,7 +16,7 @@ An default C extension provides optimized union-find linkage, haversine distance
 Requires Python >= 3.10 and a C compiler (for the optional extension).
 
 ```bash
-git clone https://github.com/vwmaus/gshac.git
+git clone https://github.com/mine-the-gap/gshac.git
 cd gshac
 
 # Create and activate a virtual environment
