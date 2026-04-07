@@ -3,6 +3,7 @@
 [![Tests](https://github.com/vwmaus/gshac/actions/workflows/tests.yml/badge.svg)](https://github.com/vwmaus/gshac/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![codecov](https://codecov.io/gh/vwmaus/gshac/graph/badge.svg?token=9VQVWDFRQ2)](https://codecov.io/gh/vwmaus/gshac)
 
 **Geographically Sparse Hierarchical Agglomerative Clustering**
 
